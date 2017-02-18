@@ -15,10 +15,13 @@ class SearchImagesViewController: UIViewController, UISearchBarDelegate, UIColle
     @IBOutlet private weak var searchBar: UISearchBar!
    
     //MARK: private data
-    private static let apiKey = "AIzaSyDYVOu0CC8-M6kqGg78CW2MctA2Df7Je8o"
+    private struct Constant {
+        static let apiKey = "AIzaSyDYVOu0CC8-M6kqGg78CW2MctA2Df7Je8o"
+        static let numberOfImagesPerQuery = 9
+        static let maximumImagesPerSearch = 100
+    }
     private var cache = NSCache<NSString, UIImage>()
     private var loading = false
-    private static let numberOfImagesPerQuery = 10
     private var search: String? {
         didSet {
             urls.removeAll()
@@ -37,7 +40,26 @@ class SearchImagesViewController: UIViewController, UISearchBarDelegate, UIColle
     
     //MARK: private funcs
     private func askGoogleForMorePics() {
-        if let search = self.search, let url = URL(string: "https://www.googleapis.com/customsearch/v1?q=\(search.replacingOccurrences(of: " ", with: "+"))&cx=005594313016221312182%3Avorw4qu0-xa&num=\(SearchImagesViewController.numberOfImagesPerQuery)&searchType=image&start=\(urls.count + 1)&key=\(SearchImagesViewController.apiKey)") {
+        var numberOfImagesPerQuery = Constant.numberOfImagesPerQuery
+        guard let search = self.search else {
+            print("self.search == nil, cant look for that")
+            return
+        }
+        
+        if Constant.maximumImagesPerSearch <= urls.count + numberOfImagesPerQuery {
+            numberOfImagesPerQuery = Constant.maximumImagesPerSearch - urls.count
+            
+            if numberOfImagesPerQuery <= 0 {
+                print("cannot load any more images for this search")
+                return
+            }
+        }
+        
+        let urlString = "https://www.googleapis.com/customsearch/v1?q=\(search.replacingOccurrences(of: " ", with: "+"))&cx=005594313016221312182%3Avorw4qu0-xa&num=\(numberOfImagesPerQuery)&searchType=image&start=\(urls.count + 1)&key=\(Constant.apiKey)"
+        
+        print(urlString)
+        
+        if let url = URL(string: urlString) {
             var request = URLRequest(url: url)
             
             request.httpMethod = "GET"
@@ -95,7 +117,7 @@ class SearchImagesViewController: UIViewController, UISearchBarDelegate, UIColle
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ImageCollectionViewCell.identifier, for: indexPath)
         
-        if urls.count - indexPath.row < SearchImagesViewController.numberOfImagesPerQuery && !loading {
+        if urls.count - indexPath.row < Constant.numberOfImagesPerQuery && !loading {
             askGoogleForMorePics()
         }
         
@@ -107,7 +129,6 @@ class SearchImagesViewController: UIViewController, UISearchBarDelegate, UIColle
             if let image = cache.object(forKey: url.absoluteString as NSString) {
                 imagecell.image = image
             } else {
-                print("begins downloading from: \(url)")
                 DispatchQueue.global(qos: .default).async {
                     if let data = try? Data(contentsOf: url) {
                         DispatchQueue.main.async { [weak weakSelf = self] in
@@ -117,7 +138,7 @@ class SearchImagesViewController: UIViewController, UISearchBarDelegate, UIColle
                             }
                         }
                     } else {
-                        print("failure")
+                        print("failed download from \(url)")
                     }
                 }
             }
