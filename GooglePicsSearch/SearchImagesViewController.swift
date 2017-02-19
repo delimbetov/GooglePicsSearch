@@ -20,6 +20,7 @@ class SearchImagesViewController: UIViewController, UISearchBarDelegate, UIColle
         static let numberOfImagesPerQuery = 9
         static let maximumImagesPerSearch = 100
     }
+    
     private var cache = NSCache<NSString, UIImage>()
     private var loading = false
     private var search: String? {
@@ -55,7 +56,9 @@ class SearchImagesViewController: UIViewController, UISearchBarDelegate, UIColle
             }
         }
         
-        let urlString = "https://www.googleapis.com/customsearch/v1?q=\(search.replacingOccurrences(of: " ", with: "+"))&cx=005594313016221312182%3Avorw4qu0-xa&num=\(numberOfImagesPerQuery)&searchType=image&start=\(urls.count + 1)&key=\(Constant.apiKey)"
+        //addingPercentEncoding is for cyrillic symbols 
+        let query = search.replacingOccurrences(of: " ", with: "+").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "https://www.googleapis.com/customsearch/v1?q=\(query)&cx=005594313016221312182%3Avorw4qu0-xa&num=\(numberOfImagesPerQuery)&searchType=image&start=\(urls.count + 1)&key=\(Constant.apiKey)"
         
         print(urlString)
         
